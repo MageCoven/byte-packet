@@ -43,7 +43,7 @@ namespace BytePacket {
             buffer = new List<byte>(data);
             byte[] temp = new byte[4];
             buffer.CopyTo(0, temp, 0, 4);
-            packetLength = BitConverter.ToInt32(temp);
+            packetLength = BitConverter.ToInt32(temp, 0);
         }
         #endregion
 
@@ -147,7 +147,7 @@ namespace BytePacket {
                 return new ReadResult<string>("", ReadResultError.IncorrectType);
             }
 
-            int stringByteLength = BitConverter.ToInt32(ReadRaw(4));
+            int stringByteLength = BitConverter.ToInt32(ReadRaw(4), 0);
             return new ReadResult<string>(Encoding.UTF8.GetString(ReadRaw(stringByteLength)), null);
         }
 
@@ -159,7 +159,7 @@ namespace BytePacket {
             int length = BitConverter.ToInt32(ReadRaw(4), 0);
             string[] arr = new string[length];
             for (int i = 0; i < length; i++) {
-                int stringByteLength = BitConverter.ToInt32(ReadRaw(4));
+                int stringByteLength = BitConverter.ToInt32(ReadRaw(4), 0);
                 arr[i] = Encoding.UTF8.GetString(ReadRaw(stringByteLength));
             }
 
