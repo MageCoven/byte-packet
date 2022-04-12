@@ -70,6 +70,17 @@ namespace BytePacket {
             packetLength += 4; // The 4 is because int32 is 4 bytes
         }
 
+        public void Write(int[] intArray) {
+            SignElement(DataType.INT_ARRAY);
+            buffer.AddRange(BitConverter.GetBytes(intArray.Length));
+            packetLength += 4; // The 4 is because int32 is 4 bytes
+
+            foreach (int _int in intArray) {
+                buffer.AddRange(BitConverter.GetBytes(_int));
+            }
+            packetLength += 4 * intArray.Length; // The 4 is because int32 is 4 bytes
+        }
+
         public void Write(string _string) {
             // TODO: Make a const or override or something of the sort that enables the change from UTF-8 to UTF-16 for more non ASCII heavy languages
             SignElement(DataType.STRING);
@@ -77,6 +88,19 @@ namespace BytePacket {
             buffer.AddRange(BitConverter.GetBytes(temp.Length));
             buffer.AddRange(temp);
             packetLength += temp.Length + 4; // The 4 is because int32 is 4 bytes
+        }
+
+        public void Write(string[] stringArray) {
+            SignElement(DataType.STRING_ARRAY);
+            buffer.AddRange(BitConverter.GetBytes(stringArray.Length));
+            packetLength += 4; // The 4 is because int32 is 4 bytes
+
+            foreach (string _string in stringArray) {
+                byte[] temp = Encoding.UTF8.GetBytes(_string);
+                buffer.AddRange(BitConverter.GetBytes(temp.Length));
+                buffer.AddRange(temp);
+                packetLength += temp.Length + 4; // The 4 is because int32 is 4 bytes
+            }
         }
         #endregion
 
@@ -101,10 +125,35 @@ namespace BytePacket {
             return BitConverter.ToInt32(ReadRaw(4), 0);
         }
 
+        public int[]? ReadIntArray() {
+            if (!IsElementType(DataType.INT_ARRAY)) { return null; }
+            
+            int length = BitConverter.ToInt32(ReadRaw(4), 0);
+            int[] arr = new int[length];
+            for (int i = 0; i < length; i++) {
+                arr[i] = BitConverter.ToInt32(ReadRaw(4), 0);
+            }
+            
+            return arr;
+        }
+
         public string? ReadString() {
             if (!IsElementType(DataType.STRING)) { return null; }
             int stringByteLength = BitConverter.ToInt32(ReadRaw(4));
             return Encoding.UTF8.GetString(ReadRaw(stringByteLength));
+        }
+
+        public string[]? ReadStringArray() {
+            if (!IsElementType(DataType.STRING_ARRAY)) { return null; }
+            
+            int length = BitConverter.ToInt32(ReadRaw(4), 0);
+            string[] arr = new string[length];
+            for (int i = 0; i < length; i++) {
+                int stringByteLength = BitConverter.ToInt32(ReadRaw(4));
+                arr[i] = Encoding.UTF8.GetString(ReadRaw(stringByteLength));
+            }
+
+            return arr;
         }
         #endregion
 
@@ -126,7 +175,9 @@ namespace BytePacket {
         #region DataTypes
         public enum DataType : byte {
             INT,
-            STRING
+            STRING,
+            INT_ARRAY,
+            STRING_ARRAY
         }
         #endregion
     }
