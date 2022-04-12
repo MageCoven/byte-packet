@@ -65,13 +65,13 @@ namespace BytePacket {
         }
 
         public void Write(int _int) {
-            SignElement(DataType.INT);
+            SignElement(DataType.Int);
             buffer.AddRange(BitConverter.GetBytes(_int));
             packetLength += 4; // The 4 is because int32 is 4 bytes
         }
 
         public void Write(int[] intArray) {
-            SignElement(DataType.INT_ARRAY);
+            SignElement(DataType.IntArray);
             buffer.AddRange(BitConverter.GetBytes(intArray.Length));
             packetLength += 4; // The 4 is because int32 is 4 bytes
 
@@ -83,7 +83,7 @@ namespace BytePacket {
 
         public void Write(string _string) {
             // TODO: Make a const or override or something of the sort that enables the change from UTF-8 to UTF-16 for more non ASCII heavy languages
-            SignElement(DataType.STRING);
+            SignElement(DataType.String);
             byte[] temp = Encoding.UTF8.GetBytes(_string);
             buffer.AddRange(BitConverter.GetBytes(temp.Length));
             buffer.AddRange(temp);
@@ -91,7 +91,7 @@ namespace BytePacket {
         }
 
         public void Write(string[] stringArray) {
-            SignElement(DataType.STRING_ARRAY);
+            SignElement(DataType.StringArray);
             buffer.AddRange(BitConverter.GetBytes(stringArray.Length));
             packetLength += 4; // The 4 is because int32 is 4 bytes
 
@@ -120,13 +120,18 @@ namespace BytePacket {
             return temp;
         }
 
-        public int? ReadInt() {
-            if (!IsElementType(DataType.INT)) { return null; }
-            return BitConverter.ToInt32(ReadRaw(4), 0);
+        public ReadResult<int> ReadInt() {
+            if (!IsElementType(DataType.Int)) {
+                return new ReadResult<int>(0, ReadResultError.IncorrectType);
+            }
+
+            return new ReadResult<int>(BitConverter.ToInt32(ReadRaw(4), 0), null);
         }
 
-        public int[]? ReadIntArray() {
-            if (!IsElementType(DataType.INT_ARRAY)) { return null; }
+        public ReadResult<int[]> ReadIntArray() {
+            if (!IsElementType(DataType.IntArray)) {
+                return new ReadResult<int[]>(new int[0], ReadResultError.IncorrectType);
+            }
             
             int length = BitConverter.ToInt32(ReadRaw(4), 0);
             int[] arr = new int[length];
@@ -134,17 +139,22 @@ namespace BytePacket {
                 arr[i] = BitConverter.ToInt32(ReadRaw(4), 0);
             }
             
-            return arr;
+            return new ReadResult<int[]>(arr, null);
         }
 
-        public string? ReadString() {
-            if (!IsElementType(DataType.STRING)) { return null; }
+        public ReadResult<string> ReadString() {
+            if (!IsElementType(DataType.String)) {
+                return new ReadResult<string>("", ReadResultError.IncorrectType);
+            }
+
             int stringByteLength = BitConverter.ToInt32(ReadRaw(4));
-            return Encoding.UTF8.GetString(ReadRaw(stringByteLength));
+            return new ReadResult<string>(Encoding.UTF8.GetString(ReadRaw(stringByteLength)), null);
         }
 
-        public string[]? ReadStringArray() {
-            if (!IsElementType(DataType.STRING_ARRAY)) { return null; }
+        public ReadResult<string[]> ReadStringArray() {
+            if (!IsElementType(DataType.StringArray)) {
+                return new ReadResult<string[]>(new string[0], ReadResultError.IncorrectType);
+            }
             
             int length = BitConverter.ToInt32(ReadRaw(4), 0);
             string[] arr = new string[length];
@@ -153,7 +163,7 @@ namespace BytePacket {
                 arr[i] = Encoding.UTF8.GetString(ReadRaw(stringByteLength));
             }
 
-            return arr;
+            return new ReadResult<string[]>(arr, null);
         }
         #endregion
 
@@ -166,7 +176,8 @@ namespace BytePacket {
             return buffer.ToArray();
         }
 
-        public DataType GetElementType() {
+        public DataType? GetElementType() {
+            if (!Enum.IsDefined(typeof(DataType), buffer[bufferPointer])) { return null; }
             return (DataType)buffer[bufferPointer];
         }
         #endregion
@@ -174,10 +185,38 @@ namespace BytePacket {
 
         #region DataTypes
         public enum DataType : byte {
-            INT,
-            STRING,
-            INT_ARRAY,
-            STRING_ARRAY
+            Int,
+            IntArray,
+            String,
+            StringArray
+        }
+
+        // NOTE: This might not even be useful, but I thought of it so it's here now
+        public static Type? GetTypeFromElementType(DataType type) {
+            switch (type) {
+                case DataType.Int:         return typeof(int);
+                case DataType.IntArray:    return typeof(int[]);
+                case DataType.String:      return typeof(string);
+                case DataType.StringArray: return typeof(string[]);
+            }
+
+            return null;
+        }
+        #endregion
+
+        #region ReadResult
+        public struct ReadResult<T> {
+            public readonly T value;
+            public readonly ReadResultError? error;
+
+            public ReadResult(T value, ReadResultError? error) {
+                this.value = value;
+                this.error = error;
+            }
+        }
+
+        public enum ReadResultError {
+            IncorrectType
         }
         #endregion
     }
